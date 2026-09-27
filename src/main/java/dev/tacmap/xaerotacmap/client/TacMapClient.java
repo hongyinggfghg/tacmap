@@ -25,6 +25,7 @@ public final class TacMapClient {
     @SubscribeEvent
     public static void onRegisterKeys(RegisterKeyMappingsEvent event) {
         event.register(KeyBinds.TOGGLE_HUD);
+        event.register(KeyBinds.OPEN_SQUAD);
     }
 
     @SubscribeEvent

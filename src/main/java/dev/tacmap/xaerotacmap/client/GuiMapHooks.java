@@ -128,6 +128,16 @@ public final class GuiMapHooks {
         public double toScreenYSnap(double worldZ, int guiHeight) {
             return guiHeight / 2.0D + Math.round((worldZ - cameraZ) * scale) / guiScale;
         }
+
+        /** Gui-screen X -> map-space X (inverse of {@link #toScreenX}, no dim division). */
+        public double worldFromScreenX(double guiX, int guiWidth) {
+            return cameraX + (guiX - guiWidth / 2.0D) * guiScale / scale;
+        }
+
+        /** Gui-screen Y -> map-space Z (inverse of {@link #toScreenY}, no dim division). */
+        public double worldFromScreenY(double guiY, int guiHeight) {
+            return cameraZ + (guiY - guiHeight / 2.0D) * guiScale / scale;
+        }
     }
 
     private static boolean initialized = false;
@@ -141,7 +151,9 @@ public final class GuiMapHooks {
     private static Field fCameraDestination;
     private static Field fCamDestAnimX;
     private static Field fCamDestAnimZ;
+    private static Field fLastDim;
     private static boolean freezeHooksReady = false;
+    private static boolean dimHooksReady = false;
     private static boolean warned = false;
 
     private GuiMapHooks() {
@@ -190,12 +202,41 @@ public final class GuiMapHooks {
             XaeroTacMap.LOGGER.debug("[TacMap] Drag-freeze hooks unavailable; the tactical line "
                     + "will follow the live hover target instead of locking while the map moves.", t);
         }
+        try {
+            fLastDim = guiMapClass.getDeclaredField("lastViewedDimensionId");
+            fLastDim.setAccessible(true);
+            dimHooksReady = true;
+        } catch (Throwable t) {
+            dimHooksReady = false;
+            XaeroTacMap.LOGGER.debug("[TacMap] Map-dimension hook unavailable; annotations will "
+                    + "be filtered by the player's dimension instead of the map's.", t);
+        }
         return usable;
     }
 
     /** True when the given screen is the Xaero world map screen. */
     public static boolean isMapScreen(Screen screen) {
         return usable && guiMapClass != null && guiMapClass.isInstance(screen);
+    }
+
+    /**
+     * Dimension id string the world map is currently showing (e.g.
+     * {@code minecraft:overworld}), or null when unavailable (caller then
+     * falls back to the player's own dimension).
+     */
+    public static String getMapDimension(Screen screen) {
+        if (!usable || !dimHooksReady || !isMapScreen(screen)) {
+            return null;
+        }
+        try {
+            Object dim = fLastDim.get(screen);
+            if (dim instanceof net.minecraft.resources.ResourceKey) {
+                return ((net.minecraft.resources.ResourceKey<?>) dim).location().toString();
+            }
+        } catch (Throwable ignored) {
+            // fall through
+        }
+        return null;
     }
 
     /**
