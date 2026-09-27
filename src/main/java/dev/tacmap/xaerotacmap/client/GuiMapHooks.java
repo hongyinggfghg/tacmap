@@ -1,6 +1,7 @@
 package dev.tacmap.xaerotacmap.client;
 
 import dev.tacmap.xaerotacmap.XaeroTacMap;
+import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.screens.Screen;
 import xaero.map.element.HoveredMapElementHolder;
 
@@ -18,8 +19,15 @@ import java.lang.reflect.Field;
  *   <li>{@code viewed} - HoveredMapElementHolder of whatever map element the mouse
  *       is over; Xaero refreshes it every frame while rendering the map screen.</li>
  *   <li>{@code cameraX}, {@code cameraZ}, {@code scale} - the live map view state,
- *       updated every frame. World &lt;-&gt; screen conversion:
- *       screenX = (worldX - cameraX) * scale + guiWidth / 2.</li>
+ *       updated every frame. Xaero renders elements in FRAMEBUFFER PIXEL space:
+ *       GuiMap scales the matrix by 1/guiScale (line 969) and translates it to
+ *       the pixel-space screen center (line 970), elements are placed at pixel
+ *       offset (world - camera) * scale (lines 184-190 of
+ *       MapElementRenderHandler, rounded to whole pixels), and that pixel space
+ *       is divided back down by guiScale. So the gui-space position of a map
+ *       point is guiSize / 2 + (world - camera) * scale / guiScale - the
+ *       division by the window GUI scale is REQUIRED; {@code scale} is counted
+ *       in physical framebuffer pixels per block, not gui units per block.</li>
  *   <li>{@code mouseDownPosX}, {@code cameraDestination}, {@code cameraDestinationAnimX},
  *       {@code cameraDestinationAnimZ} - user interaction state used to detect when the
  *       map camera is being moved (drag, release inertia or jump-to-waypoint
@@ -61,26 +69,64 @@ public final class GuiMapHooks {
         }
     }
 
-    /** Live map view state: camera position in world coords + pixel scale. */
+    /**
+     * Live map view state: camera position (dimension-scaled world coords),
+     * Xaero's pixel-per-block scale and the window GUI scale.
+     *
+     * <p>Coordinate spaces (verified against decompiled xaeroworldmap 1.46.0,
+     * GuiMap.render lines 969-970 and 1354 plus MapElementRenderHandler lines
+     * 96 and 184-190): Xaero renders map elements inside a matrix that is
+     * translated to the FRAMEBUFFER-pixel screen center and scaled by
+     * {@code 1/guiScale}; each element is translated by the PIXEL offset
+     * {@code (worldPos - camera) * scale} (icons additionally rounded to whole
+     * pixels), and the whole pixel space is brought back to gui units by the
+     * {@code 1/guiScale} matrix factor. The resulting gui-space position of a
+     * map point is therefore:</p>
+     *
+     * <pre>gui = guiSize / 2 + (world - camera) * scale / guiScale</pre>
+     *
+     * <p>Missing the {@code / guiScale} makes the line static while
+     * cursor-anchored zooming (Xaero keeps {@code (world - camera) * scale}
+     * constant for the anchored point) and guiScale-times too fast while
+     * dragging - which is exactly the "line frozen on screen" symptom.</p>
+     */
     public static final class ViewState {
         public final double cameraX;
         public final double cameraZ;
         public final double scale;
+        /** Window GUI scale factor (vanilla video settings scale, always >= 1). */
+        public final double guiScale;
 
-        ViewState(double cameraX, double cameraZ, double scale) {
+        ViewState(double cameraX, double cameraZ, double scale, double guiScale) {
             this.cameraX = cameraX;
             this.cameraZ = cameraZ;
             this.scale = scale;
+            this.guiScale = guiScale > 0.0D && !Double.isNaN(guiScale) ? guiScale : 1.0D;
         }
 
-        /** World X -> gui-scaled screen X. */
+        /** World X -> gui-screen X, smooth (used for the player arrow). */
         public double toScreenX(double worldX, int guiWidth) {
-            return (worldX - cameraX) * scale + guiWidth / 2.0D;
+            return guiWidth / 2.0D + (worldX - cameraX) * scale / guiScale;
         }
 
-        /** World Z -> gui-scaled screen Y (map is top-down, Z maps to screen Y). */
+        /** World Z -> gui-screen Y, smooth (map is top-down, Z maps to screen Y). */
         public double toScreenY(double worldZ, int guiHeight) {
-            return (worldZ - cameraZ) * scale + guiHeight / 2.0D;
+            return guiHeight / 2.0D + (worldZ - cameraZ) * scale / guiScale;
+        }
+
+        /**
+         * World X -> gui-screen X with Xaero's integer-PIXEL snapping. Waypoint
+         * icons are placed at {@code Math.round(pixelOffset)}
+         * (MapElementRenderHandler line 186), so the tactical line tip must snap
+         * the pixel offset the same way to stay glued to the icon.
+         */
+        public double toScreenXSnap(double worldX, int guiWidth) {
+            return guiWidth / 2.0D + Math.round((worldX - cameraX) * scale) / guiScale;
+        }
+
+        /** World Z -> gui-screen Y with Xaero's integer-PIXEL snapping. */
+        public double toScreenYSnap(double worldZ, int guiHeight) {
+            return guiHeight / 2.0D + Math.round((worldZ - cameraZ) * scale) / guiScale;
         }
     }
 
@@ -152,10 +198,21 @@ public final class GuiMapHooks {
         return usable && guiMapClass != null && guiMapClass.isInstance(screen);
     }
 
-    /** Reads the live map view state (camera + scale), or null when unavailable. */
+    /**
+     * Reads the live map view state (camera + pixel scale + gui scale), or null
+     * when unavailable. The GUI scale comes from the vanilla window (public API,
+     * no reflection) and is required to convert Xaero's pixel-space offsets into
+     * gui-screen coordinates - see {@link ViewState}.
+     */
     public static ViewState getViewState(Screen screen) {
         if (!usable) {
             return null;
+        }
+        double guiScale = 1.0D;
+        try {
+            guiScale = Minecraft.getInstance().getWindow().getGuiScale();
+        } catch (Throwable ignored) {
+            // leave 1.0 - only degrades snapping precision, never correctness
         }
         try {
             double camX = fCameraX.getDouble(screen);
@@ -164,7 +221,7 @@ public final class GuiMapHooks {
             if (scale <= 0.0D || Double.isNaN(scale)) {
                 return null;
             }
-            return new ViewState(camX, camZ, scale);
+            return new ViewState(camX, camZ, scale, guiScale);
         } catch (Throwable t) {
             warnOnce(t);
             return null;
@@ -177,24 +234,65 @@ public final class GuiMapHooks {
      * inertia / jump animation. While any of these is active, Xaero keeps
      * re-evaluating which map element sits under the stationary cursor, so
      * hover-driven overlays must lock their target until the camera rests.
+     *
+     * <p>Primary detection reads Xaero's interaction-state fields; if those are
+     * unavailable (or silently fail), it falls back to comparing the camera
+     * values against the previous frame, which works regardless of field layout.</p>
      */
     public static boolean isMapMoving(Screen screen) {
-        if (!usable || !freezeHooksReady) {
-            return false;
-        }
-        try {
-            if (fMouseDownPosX.getInt(screen) != -1) {
-                return true;
+        boolean moving = false;
+        if (usable && freezeHooksReady) {
+            try {
+                if (fMouseDownPosX.getInt(screen) != -1) {
+                    moving = true;
+                } else if (fCameraDestination.get(screen) != null) {
+                    moving = true;
+                } else if (fCamDestAnimX.get(screen) != null || fCamDestAnimZ.get(screen) != null) {
+                    moving = true;
+                }
+            } catch (Throwable t) {
+                warnOnce(t);
+                moving = false;
             }
-            if (fCameraDestination.get(screen) != null) {
-                return true;
-            }
-            return fCamDestAnimX.get(screen) != null || fCamDestAnimZ.get(screen) != null;
-        } catch (Throwable t) {
-            warnOnce(t);
-            return false;
         }
+        // The delta check also catches movement the interaction fields miss
+        // (e.g. release inertia between field updates), so always consult it
+        // unless we already know the map is moving.
+        return moving || isCameraChanging(screen);
     }
+
+    private static double deltaPrevCamX = Double.NaN;
+    private static double deltaPrevCamZ;
+    private static double deltaPrevScale;
+
+    /**
+     * Frame-to-frame camera comparison. True on any frame where the camera or
+     * scale differs from the previous rendered frame - i.e. the map is sliding,
+     * animating or zooming right now. Used as the robust fallback for
+     * {@link #isMapMoving(Screen)}.
+     */
+    private static boolean isCameraChanging(Screen screen) {
+        ViewState v = getViewState(screen);
+        if (v == null) {
+            return false;
+        }
+        boolean changed;
+        if (lastScreenCheck != screen || Double.isNaN(deltaPrevCamX)) {
+            // First frame on this screen: establish the baseline, no motion.
+            changed = false;
+        } else {
+            changed = Math.abs(v.cameraX - deltaPrevCamX) > 1.0E-9D
+                    || Math.abs(v.cameraZ - deltaPrevCamZ) > 1.0E-9D
+                    || Math.abs(v.scale - deltaPrevScale) > 1.0E-12D;
+        }
+        lastScreenCheck = screen;
+        deltaPrevCamX = v.cameraX;
+        deltaPrevCamZ = v.cameraZ;
+        deltaPrevScale = v.scale;
+        return changed;
+    }
+
+    private static Screen lastScreenCheck;
 
     /** True while a left-button map drag is actively in progress (mouse held down on empty map). */
     public static boolean isDragging(Screen screen) {
@@ -206,6 +304,12 @@ public final class GuiMapHooks {
         } catch (Throwable t) {
             return false;
         }
+    }
+
+    /** Clears the camera-delta tracking state (call when the screen instance changes). */
+    public static void resetDeltaTracking() {
+        deltaPrevCamX = Double.NaN;
+        lastScreenCheck = null;
     }
 
     /**

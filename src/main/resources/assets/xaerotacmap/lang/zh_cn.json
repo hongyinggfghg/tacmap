@@ -59,5 +59,6 @@
   "xaerotacmap.config.include_death": "包含死亡点",
   "xaerotacmap.config.hover_panel": "地图悬停面板",
   "xaerotacmap.config.tactical_line": "战术方位虚线",
-  "xaerotacmap.config.line_label": "虚线中点标注"
+  "xaerotacmap.config.line_label": "虚线中点标注",
+  "xaerotacmap.config.debug_bar": "诊断条(排查用)"
 }

@@ -122,10 +122,11 @@ public final class TacMapConfigScreen extends Screen {
         // ---------------- bottom row: map screen features ----------------
         int mapY = yAt(ROWS) + 8;
         int btnW = 100;
-        int x0 = this.width / 2 - (btnW * 3 + 8) / 2;
+        int x0 = this.width / 2 - (btnW * 4 + 12) / 2;
         addWidget(boolCycle(x0, mapY, btnW, TacMapConfig.MAP_HOVER_PANEL, "xaerotacmap.config.hover_panel"));
-        addWidget(boolCycle(x0 + btnW + 4, mapY, btnW, TacMapConfig.MAP_TACTICAL_LINE, "xaerotacmap.config.tactical_line"));
+        addWidget(boolCycle(x0 + (btnW + 4), mapY, btnW, TacMapConfig.MAP_TACTICAL_LINE, "xaerotacmap.config.tactical_line"));
         addWidget(boolCycle(x0 + (btnW + 4) * 2, mapY, btnW, TacMapConfig.MAP_LINE_MID_LABEL, "xaerotacmap.config.line_label"));
+        addWidget(boolCycle(x0 + (btnW + 4) * 3, mapY, btnW, TacMapConfig.MAP_DEBUG_BAR, "xaerotacmap.config.debug_bar"));
 
         this.addRenderableWidget(Button.builder(Component.translatable("xaerotacmap.config.done"), b -> this.onClose())
                 .bounds(this.width / 2 - 50, this.height - 28, 100, 20)

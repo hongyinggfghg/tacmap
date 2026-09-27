@@ -59,5 +59,6 @@
   "xaerotacmap.config.include_death": "Include deathpoints",
   "xaerotacmap.config.hover_panel": "Map hover panel",
   "xaerotacmap.config.tactical_line": "Tactical bearing line",
-  "xaerotacmap.config.line_label": "Label on line"
+  "xaerotacmap.config.line_label": "Label on line",
+  "xaerotacmap.config.debug_bar": "Debug bar"
 }
