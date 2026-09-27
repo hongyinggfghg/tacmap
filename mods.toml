@@ -1,0 +1,47 @@
+modLoader="javafml"
+loaderVersion="[47,)"
+license="MIT"
+
+[[mods]]
+modId="xaerotacmap"
+version="4.0.10"
+displayName="Xaero Tactical Map"
+authors="TacMap Project"
+logoFile="logo.png"
+description='''
+A tactical waypoint awareness HUD (ATAK style) built on top of Xaero's World Map / Minimap.
+
+- World map screen (M): hover a waypoint for a tactical panel with precise distance plus dual bearing readouts (compass 0=N and F3 yaw 0=S), and a dashed bearing line from you to the target.
+- In-game HUD: always-on list of the nearest waypoints with distance / bearing / 8-way direction, refreshed 10 times per second.
+- Tactical annotations: points / routes / polygons / circles with a military symbol palette, squad system and session sync (J).
+- Compass bearing convention: North = 0 deg; yaw convention: South = 0 deg (Minecraft F3).
+'''
+displayTest="IGNORE_ALL_VERSION"
+
+[[dependencies.xaerotacmap]]
+    modId="forge"
+    mandatory=true
+    versionRange="[47,)"
+    ordering="NONE"
+    side="BOTH"
+
+[[dependencies.xaerotacmap]]
+    modId="minecraft"
+    mandatory=true
+    versionRange="[1.20.1,1.21)"
+    ordering="NONE"
+    side="BOTH"
+
+[[dependencies.xaerotacmap]]
+    modId="xaerominimap"
+    mandatory=false
+    versionRange="[0,)"
+    ordering="AFTER"
+    side="CLIENT"
+
+[[dependencies.xaerotacmap]]
+    modId="xaeroworldmap"
+    mandatory=false
+    versionRange="[0,)"
+    ordering="AFTER"
+    side="CLIENT"
