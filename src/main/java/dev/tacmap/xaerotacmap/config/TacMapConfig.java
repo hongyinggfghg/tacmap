@@ -50,6 +50,7 @@ public final class TacMapConfig {
     public static final ForgeConfigSpec.BooleanValue MAP_HOVER_PANEL;
     public static final ForgeConfigSpec.BooleanValue MAP_TACTICAL_LINE;
     public static final ForgeConfigSpec.BooleanValue MAP_LINE_MID_LABEL;
+    public static final ForgeConfigSpec.BooleanValue MAP_CHIP_READOUT;
     public static final ForgeConfigSpec.BooleanValue MAP_DEBUG_BAR;
 
     static {
@@ -93,6 +94,9 @@ public final class TacMapConfig {
                 .define("tacticalLine", true);
         MAP_LINE_MID_LABEL = b.comment("Show distance/bearing label at the middle of the tactical line.")
                 .define("lineMidLabel", true);
+        MAP_CHIP_READOUT = b.comment("Show the dual bearing readout (yaw + compass + distance) under annotation name chips on the world map. "
+                        + "OFF (default) = chips show the marker name only; ON = v4.0.7 style second line with live readouts.")
+                .define("chipReadout", false);
         MAP_DEBUG_BAR = b.comment("Show the live diagnostic bar on the world map (build tag, live camera values, hover calibration check). "
                         + "OFF by default for clean screenshots. Turn it ON (config screen or this TOML) while reporting issues - "
                         + "it proves whether the overlay reads live map state.")

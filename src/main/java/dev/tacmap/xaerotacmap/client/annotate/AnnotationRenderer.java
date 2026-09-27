@@ -8,6 +8,7 @@ import dev.tacmap.xaerotacmap.annotation.TacAnnotation;
 import dev.tacmap.xaerotacmap.client.BearingMath;
 import dev.tacmap.xaerotacmap.client.GuiMapHooks;
 import dev.tacmap.xaerotacmap.client.annotate.DrawingController.Tool;
+import dev.tacmap.xaerotacmap.config.TacMapConfig;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
@@ -166,7 +167,8 @@ public final class AnnotationRenderer {
         // marker under the cursor and the shape being named stay readable
         double labelA = (forceLabel || hover) ? 1.0D : labelAlpha(view);
         // v4.0.7: dual degree readout (yaw + compass + distance) under the name
-        String[] sub = bearingSubline(a);
+        // v4.0.9: behind config map.chipReadout, default OFF = name-only chips
+        String[] sub = TacMapConfig.MAP_CHIP_READOUT.get() ? bearingSubline(a) : null;
         switch (a.shape) {
             case POINT: {
                 double sx = view.toScreenX(a.xs[0] / div, guiW);

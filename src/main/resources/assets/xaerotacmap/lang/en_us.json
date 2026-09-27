@@ -58,6 +58,7 @@
   "xaerotacmap.config.hover_panel": "Map hover panel",
   "xaerotacmap.config.tactical_line": "Tactical bearing line",
   "xaerotacmap.config.line_label": "Label on line",
+  "xaerotacmap.config.chip_readout": "Readouts",
   "xaerotacmap.config.debug_bar": "Debug bar",
   "key.xaerotacmap.open_squad": "Open Squad Panel",
   "xaerotacmap.toolbar.squad_tag": "Squad: %s",
