@@ -28,7 +28,7 @@ import net.minecraftforge.client.event.ScreenEvent;
  *       distance/bearing label. Both endpoints are recomputed EVERY frame from
  *       the live map camera, so the line rides the map during drags and zooms
  *       exactly like Xaero's own waypoint icons.</li>
- *   <li>Live diagnostic bar (config "debugBar", default on): shows the build
+ *   <li>Live diagnostic bar (config "debugBar", default OFF): shows the build
  *       tag, the live camera values the overlay reads, and a hover calibration
  *       check. This exists because the line math was verified against Xaero's
  *       decompiled rendering code - if the line ever appears frozen while the
@@ -72,7 +72,7 @@ public final class MapScreenRenderer {
     private static final double PLAYER_ARROW_CLEAR_R = 22.0D;
 
     /** Build tag shown by the diagnostic bar - proves which jar is actually loaded. */
-    private static final String BUILD_TAG = "TacMap v3.0";
+    private static final String BUILD_TAG = "TacMap v3.0.1";
 
     /** Map screen the overlay last rendered onto (for hover-lock state reset). */
     private static Screen lastScreen;

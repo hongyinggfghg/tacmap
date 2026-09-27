@@ -94,8 +94,9 @@ public final class TacMapConfig {
         MAP_LINE_MID_LABEL = b.comment("Show distance/bearing label at the middle of the tactical line.")
                 .define("lineMidLabel", true);
         MAP_DEBUG_BAR = b.comment("Show the live diagnostic bar on the world map (build tag, live camera values, hover calibration check). "
-                        + "Keep it ON while reporting issues - it proves whether the overlay reads live map state. Turn OFF for clean screenshots.")
-                .define("debugBar", true);
+                        + "OFF by default for clean screenshots. Turn it ON (config screen or this TOML) while reporting issues - "
+                        + "it proves whether the overlay reads live map state.")
+                .define("debugBar", false);
         b.pop();
 
         SPEC = b.build();
