@@ -196,6 +196,7 @@ public final class ClientEvents {
             case AnnotationToolbar.ACT_NONE_TOOL -> DrawingController.setTool(Tool.NONE);
             case AnnotationToolbar.ACT_POINT -> DrawingController.setTool(Tool.POINT);
             case AnnotationToolbar.ACT_ROUTE -> DrawingController.setTool(Tool.ROUTE);
+            case AnnotationToolbar.ACT_ENEMY_ROUTE -> DrawingController.setTool(Tool.ENEMY_ROUTE);
             case AnnotationToolbar.ACT_POLYGON -> DrawingController.setTool(Tool.POLYGON);
             case AnnotationToolbar.ACT_CIRCLE -> DrawingController.setTool(Tool.CIRCLE);
             case AnnotationToolbar.ACT_ERASE -> DrawingController.setTool(Tool.ERASE);

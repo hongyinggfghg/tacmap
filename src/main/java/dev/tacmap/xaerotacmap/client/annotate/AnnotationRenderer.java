@@ -9,6 +9,7 @@ import dev.tacmap.xaerotacmap.client.BearingMath;
 import dev.tacmap.xaerotacmap.client.GuiMapHooks;
 import dev.tacmap.xaerotacmap.client.annotate.DrawingController.Tool;
 import dev.tacmap.xaerotacmap.config.TacMapConfig;
+import dev.tacmap.xaerotacmap.squad.Squad;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
@@ -167,7 +168,10 @@ public final class AnnotationRenderer {
         // marker under the cursor and the shape being named stay readable
         double labelA = (forceLabel || hover) ? 1.0D : labelAlpha(view);
         // v4.0.7: dual degree readout (yaw + compass + distance) under the name
-        // v4.0.9: behind config map.chipReadout, default OFF = name-only chips
+        // v4.0.10: restored as the DEFAULT (map.showChipReadout=true, key
+        // renamed from chipReadout in v4.0.11 so stale 4.0.9 configs cannot
+        // override it); the config toggle can still switch back to the
+        // v4.0.9 name-only chips
         String[] sub = TacMapConfig.MAP_CHIP_READOUT.get() ? bearingSubline(a) : null;
         switch (a.shape) {
             case POINT: {
@@ -188,8 +192,17 @@ public final class AnnotationRenderer {
                 double[] ys = toScreenY(a.zs, div, view, guiH);
                 int abgr = ShapeDraw.abgr(argb);
                 BufferBuilder bb = ShapeDraw.open();
-                ShapeDraw.strokeDashed(bb, gg.pose().last(), xs, ys, 1.0D, false, 7.0D, 5.0D, abgr);
-                arrowAtEnd(bb, gg.pose().last(), xs, ys, argb);
+                if (a.symbol == TacAnnotation.Symbol.ENEMY_ROUTE) {
+                    // v4.0.10: enemy axis of advance - SOLID red line with a
+                    // directional arrowhead on every segment plus a bigger
+                    // terminal arrow, so the attack direction reads instantly
+                    ShapeDraw.strokePolyline(bb, gg.pose().last(), xs, ys, 1.2D, false, abgr);
+                    midArrows(bb, gg.pose().last(), xs, ys, argb);
+                    arrowAtEnd(bb, gg.pose().last(), xs, ys, argb);
+                } else {
+                    ShapeDraw.strokeDashed(bb, gg.pose().last(), xs, ys, 1.0D, false, 7.0D, 5.0D, abgr);
+                    arrowAtEnd(bb, gg.pose().last(), xs, ys, argb);
+                }
                 ShapeDraw.flush(bb);
                 if (hover) {
                     highlightPolyline(gg, xs, ys, false);
@@ -247,6 +260,27 @@ public final class AnnotationRenderer {
         BufferBuilder bb = ShapeDraw.open();
         ShapeDraw.strokePolyline(bb, gg.pose().last(), xs, ys, 2.2D, closed, ShapeDraw.abgr(HILITE));
         ShapeDraw.flush(bb);
+    }
+
+    /**
+     * v4.0.10 enemy-route decoration: one arrowhead at the midpoint of every
+     * segment longer than {@code MIN_SEG_PX}, oriented along the travel
+     * direction. Keeps the chain readable without arrowheads piling up on
+     * short clicks.
+     */
+    private static void midArrows(BufferBuilder bb, com.mojang.blaze3d.vertex.PoseStack.Pose pose,
+                                   double[] xs, double[] ys, int argb) {
+        final double MIN_SEG_PX = 16.0D;
+        for (int i = 0; i + 1 < xs.length; i++) {
+            double dx = xs[i + 1] - xs[i];
+            double dy = ys[i + 1] - ys[i];
+            double len = Math.sqrt(dx * dx + dy * dy);
+            if (len < MIN_SEG_PX) {
+                continue;
+            }
+            ShapeDraw.arrow(bb, pose, xs[i] + dx * 0.5D, ys[i] + dy * 0.5D,
+                    dx / len, dy / len, 7.5D, 4.2D, ShapeDraw.abgr(argb));
+        }
     }
 
     private static void arrowAtEnd(BufferBuilder bb, com.mojang.blaze3d.vertex.PoseStack.Pose pose,
@@ -426,7 +460,10 @@ public final class AnnotationRenderer {
     private static void drawPreview(GuiGraphics gg, Font font, GuiMapHooks.ViewState view,
                                     int guiW, int guiH, int div, String dim) {
         List<double[]> pts = DrawingController.pendingVertices();
-        int argb = ClientMarkerStore.squadColor();
+        // v4.0.10: the enemy-route preview draws in hostile red so what you
+        // see while placing vertices matches the committed marker
+        int argb = DrawingController.tool() == Tool.ENEMY_ROUTE
+                ? Squad.ENEMY_RED : ClientMarkerStore.squadColor();
         int abgr = ShapeDraw.abgr(argb);
 
         if (DrawingController.isAwaitingLabel() && DrawingController.pendingAnnotation() != null) {
@@ -470,11 +507,22 @@ public final class AnnotationRenderer {
         BufferBuilder bb = ShapeDraw.open();
         boolean closed = tool == Tool.POLYGON && pts.size() >= 3;
         ShapeDraw.strokeDashed(bb, gg.pose().last(), xs, ys, 1.1D, closed, 6.0D, 4.0D, abgr);
-        if (tool == Tool.ROUTE && DrawingController.cursorValid() && !closed) {
+        if ((tool == Tool.ROUTE || tool == Tool.ENEMY_ROUTE)
+                && DrawingController.cursorValid() && !closed) {
             double cx = view.toScreenX(DrawingController.cursorMapX(), guiW);
             double cy = view.toScreenY(DrawingController.cursorMapZ(), guiH);
             ShapeDraw.seg(bb, gg.pose().last(), xs[xs.length - 1], ys[ys.length - 1], cx, cy,
                     1.1D, abgr);
+            if (tool == Tool.ENEMY_ROUTE && xs.length >= 2) {
+                // direction cue on the finished part of the preview too
+                double dx = xs[xs.length - 1] - xs[xs.length - 2];
+                double dy = ys[ys.length - 1] - ys[ys.length - 2];
+                double len = Math.sqrt(dx * dx + dy * dy);
+                if (len >= 1.0E-4D) {
+                    ShapeDraw.arrow(bb, gg.pose().last(), xs[xs.length - 1], ys[ys.length - 1],
+                            dx / len, dy / len, 7.5D, 4.2D, abgr);
+                }
+            }
         }
         if (tool == Tool.POLYGON && DrawingController.cursorValid() && !closed) {
             double cx = view.toScreenX(DrawingController.cursorMapX(), guiW);
@@ -622,6 +670,7 @@ public final class AnnotationRenderer {
         String key = switch (t) {
             case POINT -> "xaerotacmap.annotate.hint_point";
             case ROUTE -> "xaerotacmap.annotate.hint_route";
+            case ENEMY_ROUTE -> "xaerotacmap.annotate.hint_enemy_route";
             case POLYGON -> "xaerotacmap.annotate.hint_polygon";
             case CIRCLE -> "xaerotacmap.annotate.hint_circle";
             case ERASE -> "xaerotacmap.annotate.hint_erase";

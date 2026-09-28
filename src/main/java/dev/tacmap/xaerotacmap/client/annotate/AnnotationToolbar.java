@@ -28,12 +28,15 @@ public final class AnnotationToolbar {
     public static final int ACT_SQUAD = 7;
     public static final int ACT_EXPORT = 8;
     public static final int ACT_IMPORT = 9;
+    /** v4.0.10 - APPENDED so every existing action id keeps its meaning. */
+    public static final int ACT_ENEMY_ROUTE = 10;
 
     private static final int BTN = 18;
     private static final int GAP = 3;
     private static final int X = 8;
     private static final int Y0 = 64;
-    private static final int COUNT = 10;
+    /** v4.0.10: 10 -> 11 buttons (enemy route arrows appended at the end). */
+    private static final int COUNT = 11;
 
     private static final int PANEL_BG = 0xC60D1114;
     private static final int PANEL_BORDER = 0x662FA8B8;
@@ -203,6 +206,7 @@ public final class AnnotationToolbar {
                 case ACT_POLYGON -> selected = t == Tool.POLYGON;
                 case ACT_CIRCLE -> selected = t == Tool.CIRCLE;
                 case ACT_ERASE -> selected = t == Tool.ERASE;
+                case ACT_ENEMY_ROUTE -> selected = t == Tool.ENEMY_ROUTE;
                 case ACT_PALETTE -> selected = DrawingController.paletteOpen();
                 default -> selected = false;
             }
@@ -310,6 +314,7 @@ public final class AnnotationToolbar {
             case ACT_SQUAD -> "xaerotacmap.act.squad";
             case ACT_EXPORT -> "xaerotacmap.act.export";
             case ACT_IMPORT -> "xaerotacmap.act.import";
+            case ACT_ENEMY_ROUTE -> "xaerotacmap.act.enemy_route";
             default -> null;
         };
         if (key == null) {
@@ -415,6 +420,16 @@ public final class AnnotationToolbar {
                 ShapeDraw.seg(bb, pose, cx, cy - 5, cx, cy + 4, 1.0D, abgr);
                 ShapeDraw.arrow(bb, pose, cx, cy + 5.5, 0, 1, 3.6D, 2.6D, abgr);
                 ShapeDraw.seg(bb, pose, cx - 4.5, cy + 5.5, cx + 4.5, cy + 5.5, 0.9D, abgr);
+            }
+            case ACT_ENEMY_ROUTE -> {
+                // v4.0.10: hostile zigzag with TWO arrowheads - always drawn
+                // in enemy red regardless of the toolbar icon tint
+                int red = ShapeDraw.abgr(0xFFFF5252);
+                double[] exs = {cx - 6, cx - 1.5, cx + 2, cx + 6};
+                double[] eys = {cy + 4.5, cy - 1, cy + 2.5, cy - 4.5};
+                ShapeDraw.strokeDashed(bb, pose, exs, eys, 0.8D, false, 2.5D, 1.8D, red);
+                ShapeDraw.arrow(bb, pose, cx + 6, cy - 4.5, 0.55D, -0.83D, 4.2D, 2.6D, red);
+                ShapeDraw.arrow(bb, pose, cx - 0.2, cy + 1.8, 0.55D, -0.83D, 3.4D, 2.0D, red);
             }
             default -> ShapeDraw.fillCircle(bb, pose, cx, cy, 3.0D, abgr, 10);
         }

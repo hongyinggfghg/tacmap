@@ -19,6 +19,12 @@ import java.util.List;
  * <p>Row layout: [color dot] name ... 1234.5m  45.3° NE  Y-135.4°
  * (v4.0.7: the compass bearing and the Minecraft yaw bearing are shown
  * side by side - the yaw value is what players dial in from the F3 readout.)</p>
+ *
+ * <p>v4.0.12: the list also contains the squad's tactical annotations
+ * (targets, enemy marks, routes) merged nearest-first - see
+ * {@link AnnotationHudSource}. 2D entries (all annotations, plus Xaero
+ * waypoints without a Y) print their coordinates as "x, z" instead of a
+ * misleading "x, 0, z".</p>
  */
 public final class TacHud implements IGuiOverlay {
 
@@ -166,7 +172,11 @@ public final class TacHud implements IGuiOverlay {
             gg.drawString(font, yaws[i], yawX, y, YAW, true);
 
             if (coords) {
-                String pos = e.x + ", " + e.y + ", " + e.z;
+                // v4.0.12: 2D entries (annotations and Y-less Xaero waypoints)
+                // print "x, z" - there is no stored Y to show.
+                String pos = e.yIncluded
+                        ? e.x + ", " + e.y + ", " + e.z
+                        : e.x + ", " + e.z;
                 gg.drawString(font, pos, 6, y + ROW_HEIGHT - 1, TEXT_DIM, true);
             }
             y += rowStep;

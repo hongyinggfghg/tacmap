@@ -27,9 +27,13 @@ import org.lwjgl.glfw.GLFW;
  */
 public final class DrawingController {
 
-    /** Left-edge toolbar tools. */
+    /**
+     * Left-edge toolbar tools. v4.0.10: ENEMY_ROUTE appended (client-only
+     * enum, never networked - ordinals are safe) - draws a ShapeType.ROUTE
+     * tagged with Symbol.ENEMY_ROUTE, rendered as the red arrow chain.
+     */
     public enum Tool {
-        NONE, POINT, ROUTE, POLYGON, CIRCLE, ERASE
+        NONE, POINT, ROUTE, POLYGON, CIRCLE, ERASE, ENEMY_ROUTE
     }
 
     private static Tool tool = Tool.NONE;
@@ -186,7 +190,8 @@ public final class DrawingController {
                 }
                 return false;
             }
-            case ROUTE: {
+            case ROUTE:
+            case ENEMY_ROUTE: {
                 if (button == 0) {
                     if (pending.size() < 64) {
                         pending.add(new double[]{mapX, mapZ});
@@ -406,9 +411,16 @@ public final class DrawingController {
                                    GuiMapHooks.ViewState view, int guiW, int guiH,
                                    double mouseX, double mouseY) {
         int div = DrawingController.dimDivOf(dimension);
-        TacAnnotation.Symbol symbol = shape == TacAnnotation.ShapeType.POINT
-                ? pointSymbol
-                : TacAnnotation.Symbol.FLAG;
+        TacAnnotation.Symbol symbol;
+        if (shape == TacAnnotation.ShapeType.POINT) {
+            symbol = pointSymbol;
+        } else if (tool == Tool.ENEMY_ROUTE) {
+            // v4.0.10: the dedicated enemy-route tool commits its routes with
+            // the hostile route symbol -> red axis-of-advance arrow rendering
+            symbol = TacAnnotation.Symbol.ENEMY_ROUTE;
+        } else {
+            symbol = TacAnnotation.Symbol.FLAG;
+        }
         double[] mapVerts = currentVerts(shape);
         double radius = 0.0D;
         double[] xs;
@@ -472,6 +484,9 @@ public final class DrawingController {
             }
             case ROUTE: {
                 seqRoute++;
+                if (symbol == TacAnnotation.Symbol.ENEMY_ROUTE) {
+                    return Component.translatable("xaerotacmap.annotate.default_enemy_route").getString() + "-" + seqRoute;
+                }
                 return Component.translatable("xaerotacmap.annotate.default_route").getString() + "-" + seqRoute;
             }
             default: {
@@ -517,7 +532,7 @@ public final class DrawingController {
             return true;
         }
         if (keyCode == GLFW.GLFW_KEY_ENTER || keyCode == GLFW.GLFW_KEY_KP_ENTER) {
-            if (tool == Tool.ROUTE && pending.size() >= 2) {
+            if ((tool == Tool.ROUTE || tool == Tool.ENEMY_ROUTE) && pending.size() >= 2) {
                 String dim = AnnotationRenderer.lastDimension();
                 GuiMapHooks.ViewState view = AnnotationRenderer.lastView();
                 if (dim != null && view != null) {

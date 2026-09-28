@@ -60,7 +60,8 @@
   "xaerotacmap.config.tactical_line": "战术方位虚线",
   "xaerotacmap.config.line_label": "虚线中点标注",
   "xaerotacmap.config.chip_readout": "标注读数",
-  "xaerotacmap.config.debug_bar": "诊断条(排查用)",
+  "xaerotacmap.config.hud_annotations": "标注入HUD",
+  "xaerotacmap.config.debug_bar": "诊断条",
   "xaerotacmap.toolbar.squad_tag": "小队：%s",
   "xaerotacmap.toolbar.no_squad": "未加入小队",
   "xaerotacmap.toolbar.palette_ally": "我方标记",
@@ -150,5 +151,9 @@
   "xaerotacmap.import.done": "已发送 %s 条标注（导入为本队新标注）",
   "xaerotacmap.import.failed": "导入失败：%s",
   "xaerotacmap.import.dir_hint": "点击文件导入；来源：config/tacmap_exports/",
-  "xaerotacmap.cmd.export_all_denied": "只有 OP 可以导出全部队伍"
+  "xaerotacmap.cmd.export_all_denied": "只有 OP 可以导出全部队伍",
+  "xaerotacmap.act.enemy_route": "敌军路线箭头",
+  "xaerotacmap.annotate.default_enemy_route": "敌路",
+  "xaerotacmap.annotate.hint_enemy_route": "左键沿敌方进军方向加点，右键/Enter 结束，Backspace 撤销",
+  "xaerotacmap.symbol.enemy_route": "敌军路线"
 }

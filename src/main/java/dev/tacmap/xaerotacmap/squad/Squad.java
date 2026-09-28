@@ -12,8 +12,11 @@ import net.minecraft.network.FriendlyByteBuf;
  * independent - members only ever see their own squad's annotations.
  *
  * <p>Colors are assigned from a fixed 8-color palette by squad creation order
- * and cannot be customized (spec: per-squad fixed color). Enemy-contact
- * markers are always red regardless of this color.</p>
+ * and cannot be customized (spec: per-squad fixed color) - the palette still
+ * tints each squad's row in the squad browser UI. v4.0.10: on the MAP every
+ * friendly annotation renders in the single shared {@link #FRIENDLY_BLUE}
+ * (request: 我方标记全为蓝色), while every hostile symbol stays
+ * {@link #ENEMY_RED} (敌方为红色).</p>
  */
 public final class Squad {
 
@@ -31,6 +34,13 @@ public final class Squad {
 
     /** The enemy-contact marker is forced to this red no matter the squad color. */
     public static final int ENEMY_RED = 0xFFFF5252;
+
+    /**
+     * v4.0.10 unified friendly color: EVERY non-hostile annotation (points,
+     * routes, polygons, circles, previews) renders in this blue regardless of
+     * squad palette - friendly = blue, enemy = red, instantly readable.
+     */
+    public static final int FRIENDLY_BLUE = 0xFF3FA0FF;
 
     public static final int MAX_MEMBERS = 32;
 

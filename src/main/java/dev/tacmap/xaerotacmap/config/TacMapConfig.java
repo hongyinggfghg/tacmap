@@ -45,6 +45,7 @@ public final class TacMapConfig {
     public static final ForgeConfigSpec.BooleanValue INCLUDE_DISABLED;
     public static final ForgeConfigSpec.BooleanValue INCLUDE_TEMPORARY;
     public static final ForgeConfigSpec.BooleanValue INCLUDE_DEATHPOINTS;
+    public static final ForgeConfigSpec.BooleanValue HUD_ANNOTATIONS;
 
     // ---------------------------------------------------------------- map
     public static final ForgeConfigSpec.BooleanValue MAP_HOVER_PANEL;
@@ -85,6 +86,15 @@ public final class TacMapConfig {
                 .define("includeTemporaryWaypoints", false);
         INCLUDE_DEATHPOINTS = b.comment("Include death waypoints.")
                 .define("includeDeathpoints", false);
+        // v4.0.12: merge the squad's tactical annotations into the K-key HUD.
+        // Before this the HUD listed ONLY Xaero waypoints, so the targets a
+        // squad actually draws (target marks, enemy contacts, axis-of-advance
+        // routes) never showed up with their distance/bearing/facing readouts.
+        HUD_ANNOTATIONS = b.comment("Include the squad's map annotations (tactical targets, enemy marks, routes) in the HUD list, "
+                        + "each with live distance/bearing/facing readouts and the strict blue/red two-tone dot. "
+                        + "ON (default) = annotations and Xaero waypoints share one nearest-first list; "
+                        + "OFF = waypoints only (pre-4.0.12 behavior).")
+                .define("hudAnnotations", true);
         b.pop();
 
         b.push("map");
@@ -94,9 +104,18 @@ public final class TacMapConfig {
                 .define("tacticalLine", true);
         MAP_LINE_MID_LABEL = b.comment("Show distance/bearing label at the middle of the tactical line.")
                 .define("lineMidLabel", true);
+        // v4.0.10: default flipped back to TRUE on request - the dual bearing
+        // readout (yaw + compass + distance) is restored under every name chip.
+        // The toggle stays so the quieter v4.0.9 name-only style is one click away.
+        // v4.0.11: config key renamed chipReadout -> showChipReadout. A plain
+        // default flip was NOT enough for upgraders: their 4.0.9-written TOML
+        // still carries "chipReadout = false", which silently overrides the new
+        // default and keeps the readouts hidden. The fresh key ignores the stale
+        // one, so every upgrader sees the restored readout without manual edits.
         MAP_CHIP_READOUT = b.comment("Show the dual bearing readout (yaw + compass + distance) under annotation name chips on the world map. "
-                        + "OFF (default) = chips show the marker name only; ON = v4.0.7 style second line with live readouts.")
-                .define("chipReadout", false);
+                        + "ON (default, restored in v4.0.10) = v4.0.7 style second line with live readouts; "
+                        + "OFF = v4.0.9 style name-only chips.")
+                .define("showChipReadout", true);
         MAP_DEBUG_BAR = b.comment("Show the live diagnostic bar on the world map (build tag, live camera values, hover calibration check). "
                         + "OFF by default for clean screenshots. Turn it ON (config screen or this TOML) while reporting issues - "
                         + "it proves whether the overlay reads live map state.")

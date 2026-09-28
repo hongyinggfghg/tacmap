@@ -65,6 +65,12 @@ public final class WaypointCache {
         double pz = mc.player.getZ();
         List<WaypointEntry> collected = XaeroWaypointSource.collect(px, py, pz);
         status = XaeroWaypointSource.lastStatus;
+        // v4.0.12: merge the squad's tactical annotations (drawn targets, enemy
+        // marks, routes) into the same nearest-first list, so the K-key HUD
+        // shows EVERY tactical target with its distance/bearing/facing row.
+        // AnnotationHudSource catches its own failures and never throws.
+        String dim = mc.level.dimension().location().toString();
+        collected.addAll(AnnotationHudSource.collect(px, pz, dim));
         collected.sort((a, b) -> Double.compare(a.distance, b.distance));
         snapshot = List.copyOf(collected);
         if (!loggedFirstData && !collected.isEmpty()) {

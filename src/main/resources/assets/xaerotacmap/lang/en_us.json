@@ -59,6 +59,7 @@
   "xaerotacmap.config.tactical_line": "Tactical bearing line",
   "xaerotacmap.config.line_label": "Label on line",
   "xaerotacmap.config.chip_readout": "Readouts",
+  "xaerotacmap.config.hud_annotations": "HUD annos",
   "xaerotacmap.config.debug_bar": "Debug bar",
   "key.xaerotacmap.open_squad": "Open Squad Panel",
   "xaerotacmap.toolbar.squad_tag": "Squad: %s",
@@ -150,5 +151,9 @@
   "xaerotacmap.import.done": "Sent %s annotations (imported into your squad)",
   "xaerotacmap.import.failed": "Import failed: %s",
   "xaerotacmap.import.dir_hint": "Click a file to import; source: config/tacmap_exports/",
-  "xaerotacmap.cmd.export_all_denied": "Only OP can export all squads"
+  "xaerotacmap.cmd.export_all_denied": "Only OP can export all squads",
+  "xaerotacmap.act.enemy_route": "Enemy route arrows",
+  "xaerotacmap.annotate.default_enemy_route": "Enemy route",
+  "xaerotacmap.annotate.hint_enemy_route": "Left-click waypoints along the enemy axis, right-click/Enter to finish, Backspace to undo",
+  "xaerotacmap.symbol.enemy_route": "Enemy route"
 }

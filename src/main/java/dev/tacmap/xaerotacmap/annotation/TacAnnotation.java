@@ -27,7 +27,10 @@ public final class TacAnnotation {
      * <p>v4.0.6: the three ENEMY_* variants were APPENDED (never insert -
      * ordinals travel over the network via {@link #byId}, and inserting would
      * shift every existing id). Old clients receiving an unknown ordinal
-     * degrade gracefully through floorMod; export files use {@link #name()}.</p>
+     * degrade gracefully through floorMod; export files use {@link #name()}.
+     * v4.0.10: ENEMY_ROUTE appended the same way - a ShapeType.ROUTE drawn
+     * with this symbol renders as the red enemy axis-of-advance arrow chain
+     * (every segment gets a directional arrowhead).</p>
      */
     public enum Symbol {
         // --- tactical pack (16) ---
@@ -37,7 +40,10 @@ public final class TacAnnotation {
         GEO_CIRCLE, GEO_SQUARE, GEO_DIAMOND, GEO_TRIANGLE, GEO_STAR,
         // --- v4.0.6 enemy-objective set (3): always-red variants of the
         //     friendly rally/base/star icons for marking HOSTILE positions ---
-        ENEMY_RALLY, ENEMY_BASE, ENEMY_STAR;
+        ENEMY_RALLY, ENEMY_BASE, ENEMY_STAR,
+        // --- v4.0.10 enemy route (1): always-red ROUTE shape drawn as a
+        //     solid line with arrowheads on every segment (axis of advance) ---
+        ENEMY_ROUTE;
 
         public String langKey() {
             return "xaerotacmap.symbol." + name().toLowerCase(java.util.Locale.ROOT);

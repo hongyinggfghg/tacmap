@@ -119,16 +119,19 @@ public final class TacMapConfigScreen extends Screen {
         r++;
         addWidget(boolCycle(col2X, r, TacMapConfig.INCLUDE_DEATHPOINTS, "xaerotacmap.config.include_death"));
 
-        // ---------------- bottom row: map screen features ----------------
-        // v4.0.9: 4 -> 5 toggles (chip readout); narrower buttons to stay centered
+        // ---------------- bottom row: quick feature toggles ----------------
+        // v4.0.9: 4 -> 5 toggles (chip readout); v4.0.12: 5 -> 6 (annotations
+        // in the HUD list). 76 px buttons so all six fit even on 480-wide
+        // GUIs (GUI scale 4 on 1080p).
         int mapY = yAt(ROWS) + 8;
-        int btnW = 88;
-        int x0 = this.width / 2 - (btnW * 5 + 16) / 2;
+        int btnW = 76;
+        int x0 = this.width / 2 - (btnW * 6 + 15) / 2;
         addWidget(boolCycle(x0, mapY, btnW, TacMapConfig.MAP_HOVER_PANEL, "xaerotacmap.config.hover_panel"));
-        addWidget(boolCycle(x0 + (btnW + 4), mapY, btnW, TacMapConfig.MAP_TACTICAL_LINE, "xaerotacmap.config.tactical_line"));
-        addWidget(boolCycle(x0 + (btnW + 4) * 2, mapY, btnW, TacMapConfig.MAP_LINE_MID_LABEL, "xaerotacmap.config.line_label"));
-        addWidget(boolCycle(x0 + (btnW + 4) * 3, mapY, btnW, TacMapConfig.MAP_CHIP_READOUT, "xaerotacmap.config.chip_readout"));
-        addWidget(boolCycle(x0 + (btnW + 4) * 4, mapY, btnW, TacMapConfig.MAP_DEBUG_BAR, "xaerotacmap.config.debug_bar"));
+        addWidget(boolCycle(x0 + (btnW + 3), mapY, btnW, TacMapConfig.MAP_TACTICAL_LINE, "xaerotacmap.config.tactical_line"));
+        addWidget(boolCycle(x0 + (btnW + 3) * 2, mapY, btnW, TacMapConfig.MAP_LINE_MID_LABEL, "xaerotacmap.config.line_label"));
+        addWidget(boolCycle(x0 + (btnW + 3) * 3, mapY, btnW, TacMapConfig.MAP_CHIP_READOUT, "xaerotacmap.config.chip_readout"));
+        addWidget(boolCycle(x0 + (btnW + 3) * 4, mapY, btnW, TacMapConfig.MAP_DEBUG_BAR, "xaerotacmap.config.debug_bar"));
+        addWidget(boolCycle(x0 + (btnW + 3) * 5, mapY, btnW, TacMapConfig.HUD_ANNOTATIONS, "xaerotacmap.config.hud_annotations"));
 
         this.addRenderableWidget(Button.builder(Component.translatable("xaerotacmap.config.done"), b -> this.onClose())
                 .bounds(this.width / 2 - 50, this.height - 28, 100, 20)
