@@ -4,7 +4,7 @@ license="MIT"
 
 [[mods]]
 modId="xaerotacmap"
-version="4.0.12"
+version="4.0.14"
 displayName="Xaero Tactical Map"
 authors="TacMap Project"
 logoFile="logo.png"

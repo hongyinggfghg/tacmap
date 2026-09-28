@@ -45,7 +45,6 @@ public final class TacMapConfig {
     public static final ForgeConfigSpec.BooleanValue INCLUDE_DISABLED;
     public static final ForgeConfigSpec.BooleanValue INCLUDE_TEMPORARY;
     public static final ForgeConfigSpec.BooleanValue INCLUDE_DEATHPOINTS;
-    public static final ForgeConfigSpec.BooleanValue HUD_ANNOTATIONS;
 
     // ---------------------------------------------------------------- map
     public static final ForgeConfigSpec.BooleanValue MAP_HOVER_PANEL;
@@ -86,15 +85,13 @@ public final class TacMapConfig {
                 .define("includeTemporaryWaypoints", false);
         INCLUDE_DEATHPOINTS = b.comment("Include death waypoints.")
                 .define("includeDeathpoints", false);
-        // v4.0.12: merge the squad's tactical annotations into the K-key HUD.
-        // Before this the HUD listed ONLY Xaero waypoints, so the targets a
-        // squad actually draws (target marks, enemy contacts, axis-of-advance
-        // routes) never showed up with their distance/bearing/facing readouts.
-        HUD_ANNOTATIONS = b.comment("Include the squad's map annotations (tactical targets, enemy marks, routes) in the HUD list, "
-                        + "each with live distance/bearing/facing readouts and the strict blue/red two-tone dot. "
-                        + "ON (default) = annotations and Xaero waypoints share one nearest-first list; "
-                        + "OFF = waypoints only (pre-4.0.12 behavior).")
-                .define("hudAnnotations", true);
+        // v4.0.13 ROLLBACK: the v4.0.12 annotations-in-HUD toggle (squad
+        // annotations merged into the K-key HUD) was removed entirely on
+        // request - the HUD collects Xaero waypoints ONLY again. Removal
+        // (not a default flip): a 4.0.12-written TOML would keep the stale
+        // true value and silently override any new default, the exact trap
+        // fixed for the chip readout key in 4.0.11. Map-side annotation
+        // features are NOT affected.
         b.pop();
 
         b.push("map");

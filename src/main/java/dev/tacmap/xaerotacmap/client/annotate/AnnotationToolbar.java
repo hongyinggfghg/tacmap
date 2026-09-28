@@ -14,6 +14,10 @@ import net.minecraft.network.chat.Component;
  * the expandable symbol palette and the inline label input box. Hit testing
  * mirrors the drawn layout exactly; clicks on toolbar/palette are consumed by
  * the caller (canceled so Xaero never sees them).
+ *
+ * <p>v4.0.14: the toolbar wraps into balanced columns adaptively - the single
+ * 11-button column (231 px) ran off the bottom of the map screen at GUI
+ * scale 4, hiding the enemy-route button. See {@code maxPerCol()}.</p>
  */
 public final class AnnotationToolbar {
 
@@ -35,6 +39,8 @@ public final class AnnotationToolbar {
     private static final int GAP = 3;
     private static final int X = 8;
     private static final int Y0 = 64;
+    /** Extra horizontal room between wrapped toolbar columns. */
+    private static final int COL_GAP = 8;
     /** v4.0.10: 10 -> 11 buttons (enemy route arrows appended at the end). */
     private static final int COUNT = 11;
 
@@ -54,13 +60,58 @@ public final class AnnotationToolbar {
     }
 
     // ------------------------------------------------------------ layout
+    //
+    // v4.0.14: adaptive column wrap. The single 11-button column needed
+    // 231 px and ran off the bottom of the map screen at GUI scale 4 (270
+    // GUI px tall on 1080p) - the enemy-route button was drawn off-screen.
+    // The layout now wraps into balanced columns whenever one column would
+    // not fit; at typical heights it stays the classic single column.
+    // Order is COLUMN-MAJOR so buttons 0..5 (the drawing tools) keep their
+    // familiar positions; palette/squad/export/import/enemy route move to
+    // the second column only when wrapping kicks in.
+
+    private static int guiH() {
+        return Minecraft.getInstance().getWindow().getGuiScaledHeight();
+    }
+
+    /** Rows that fit in one column under the current GUI height (>= 1). */
+    private static int maxPerCol() {
+        int usable = guiH() - Y0 - 6;
+        return Math.max(1, (usable + GAP) / (BTN + GAP));
+    }
+
+    private static int cols() {
+        return (COUNT + maxPerCol() - 1) / maxPerCol();
+    }
+
+    /** Balanced rows per column (every column gets this count or one less). */
+    private static int perCol() {
+        return (COUNT + cols() - 1) / cols();
+    }
+
+    private static int colOf(int i) {
+        return i / perCol();
+    }
+
+    private static int rowOf(int i) {
+        return i % perCol();
+    }
+
+    private static int btnX(int i) {
+        return X + colOf(i) * (BTN + COL_GAP);
+    }
 
     private static int btnY(int i) {
-        return Y0 + i * (BTN + GAP);
+        return Y0 + rowOf(i) * (BTN + GAP);
+    }
+
+    /** Total drawn width of the toolbar (all columns). */
+    private static int toolbarW() {
+        return (cols() - 1) * (BTN + COL_GAP) + BTN;
     }
 
     private static int paletteX() {
-        return X + BTN + 6;
+        return X + toolbarW() + 6;
     }
 
     private static int paletteW() {
@@ -100,19 +151,20 @@ public final class AnnotationToolbar {
     }
 
     public static int totalHeight() {
-        return COUNT * (BTN + GAP);
+        return perCol() * (BTN + GAP);
     }
 
     // ------------------------------------------------------------ hit testing
 
     /** Toolbar button index under the cursor, or -1. */
     public static int hit(double mx, double my) {
-        if (mx < X || mx > X + BTN || my < Y0 - GAP) {
+        if (my < Y0 - GAP) {
             return -1;
         }
         for (int i = 0; i < COUNT; i++) {
+            int x = btnX(i);
             int y = btnY(i);
-            if (my >= y && my <= y + BTN) {
+            if (mx >= x - 2 && mx <= x + BTN + 2 && my >= y && my <= y + BTN) {
                 return i;
             }
         }
@@ -195,6 +247,7 @@ public final class AnnotationToolbar {
         gg.drawString(font, squadLabel, X + 11, Y0 - 13, TEXT, true);
 
         for (int i = 0; i < COUNT; i++) {
+            int x = btnX(i);
             int y = btnY(i);
             boolean hover = hit(mouseX, mouseY) == i;
             boolean selected = false;
@@ -211,12 +264,12 @@ public final class AnnotationToolbar {
                 default -> selected = false;
             }
             int border = selected ? SEL : (hover ? 0xFF5FC3D3 : PANEL_BORDER);
-            gg.fill(X - 2, y - 2, X + BTN + 2, y + BTN + 2, PANEL_BG);
-            gg.fill(X - 2, y - 2, X + BTN + 2, y - 1, border);
-            gg.fill(X - 2, y + BTN + 1, X + BTN + 2, y + BTN + 2, border);
-            gg.fill(X - 2, y - 2, X - 1, y + BTN + 2, border);
-            gg.fill(X + BTN + 1, y - 2, X + BTN + 2, y + BTN + 2, border);
-            drawButtonIcon(gg, font, i, X, y, ICON);
+            gg.fill(x - 2, y - 2, x + BTN + 2, y + BTN + 2, PANEL_BG);
+            gg.fill(x - 2, y - 2, x + BTN + 2, y - 1, border);
+            gg.fill(x - 2, y + BTN + 1, x + BTN + 2, y + BTN + 2, border);
+            gg.fill(x - 2, y - 2, x - 1, y + BTN + 2, border);
+            gg.fill(x + BTN + 1, y - 2, x + BTN + 2, y + BTN + 2, border);
+            drawButtonIcon(gg, font, i, x, y, ICON);
             if (hover) {
                 drawToolbarTooltip(gg, font, mouseX, mouseY, i);
             }
@@ -230,7 +283,7 @@ public final class AnnotationToolbar {
         if (DrawingController.tool() != Tool.NONE && !ClientMarkerStore.inSquad()) {
             String warn = Component.translatable("xaerotacmap.annotate.need_squad").getString();
             int w = font.width(warn);
-            int hx = X + BTN + 8;
+            int hx = X + toolbarW() + 8;
             int hy = btnY(0) + 2;
             gg.fill(hx - 3, hy - 2, hx + w + 3, hy + 10, PANEL_BG);
             gg.drawString(font, warn, hx, hy, WARN, true);

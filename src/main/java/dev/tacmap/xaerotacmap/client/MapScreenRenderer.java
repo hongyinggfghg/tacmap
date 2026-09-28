@@ -74,7 +74,7 @@ public final class MapScreenRenderer {
     private static final double PLAYER_ARROW_CLEAR_R = 22.0D;
 
     /** Build tag shown by the diagnostic bar - proves which jar is actually loaded. */
-    private static final String BUILD_TAG = "TacMap v4.0.12";
+    private static final String BUILD_TAG = "TacMap v4.0.14";
 
     /** Map screen the overlay last rendered onto (for hover-lock state reset). */
     private static Screen lastScreen;

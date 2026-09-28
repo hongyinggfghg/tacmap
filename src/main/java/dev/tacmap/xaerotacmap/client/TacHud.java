@@ -20,11 +20,9 @@ import java.util.List;
  * (v4.0.7: the compass bearing and the Minecraft yaw bearing are shown
  * side by side - the yaw value is what players dial in from the F3 readout.)</p>
  *
- * <p>v4.0.12: the list also contains the squad's tactical annotations
- * (targets, enemy marks, routes) merged nearest-first - see
- * {@link AnnotationHudSource}. 2D entries (all annotations, plus Xaero
- * waypoints without a Y) print their coordinates as "x, z" instead of a
- * misleading "x, 0, z".</p>
+ * <p>v4.0.13 ROLLBACK: the v4.0.12 squad-annotation merge was removed on
+ * request - this list contains Xaero waypoints ONLY again. Y-less (2D)
+ * waypoints keep printing their coordinates as "x, z" (no fake "x, 0, z").</p>
  */
 public final class TacHud implements IGuiOverlay {
 
@@ -172,8 +170,7 @@ public final class TacHud implements IGuiOverlay {
             gg.drawString(font, yaws[i], yawX, y, YAW, true);
 
             if (coords) {
-                // v4.0.12: 2D entries (annotations and Y-less Xaero waypoints)
-                // print "x, z" - there is no stored Y to show.
+                // Y-less (2D) waypoints have no stored Y - print "x, z" only.
                 String pos = e.yIncluded
                         ? e.x + ", " + e.y + ", " + e.z
                         : e.x + ", " + e.z;
