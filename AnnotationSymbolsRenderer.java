@@ -48,8 +48,16 @@ public final class AnnotationSymbolsRenderer {
         System.arraycopy(ENEMY, 0, ALL, ALLY.length, ENEMY.length);
     }
 
-    /** Whether this symbol belongs to the enemy (always-red) palette. */
+    /**
+     * Whether this symbol belongs to the enemy (always-red) family.
+     * v4.0.10: {@link Symbol#ENEMY_ROUTE} is hostile too, but it is NOT in
+     * the {@link #ENEMY} point-palette array (it is a route symbol picked
+     * via its own toolbar tool), so it gets an explicit check here.
+     */
     public static boolean isHostile(Symbol s) {
+        if (s == Symbol.ENEMY_ROUTE) {
+            return true;
+        }
         for (Symbol e : ENEMY) {
             if (e == s) {
                 return true;

@@ -34,6 +34,11 @@ import net.minecraftforge.fml.common.Mod;
  *       every squad plus reset-all.</li>
  *   <li>Squad creator becomes leader and may transfer leadership; an OP can
  *       force-transfer via {@code /tacmap squad leader <player>}.</li>
+ *   <li>v4.0.10 hotfix: a player who DISCONNECTS is removed from their squad
+ *       immediately ({@link #onPlayerLogout}) - previously they lingered as a
+ *       ghost member until the server restart.</li>
+ *   <li>v4.0.10: an OP can dissolve squads via
+ *       {@code /tacmap squad disband <name|all>}.</li>
  * </ul>
  */
 @Mod.EventBusSubscriber(modid = XaeroTacMap.MOD_ID)
@@ -71,45 +76,60 @@ public final class SquadManager {
     }
 
     /**
-     * v4.0.10 hotfix: a player who logs out no longer stays in their squad.
-     * Removal is silent for the leaver (they are already gone); remaining
-     * members get a notice, leadership auto-transfers like a normal leave,
-     * and an emptied squad dissolves together with its annotations.
+     * v4.0.10 hotfix (bug: "玩家退出后还在小队中"): disconnecting players are
+     * detached from their squad immediately. Without this, a timeout/crash/
+     * Alt+F4 left the member (sometimes the LEADER) registered forever - the
+     * squad browser showed ghosts and leader transfer silently broke.
+     *
+     * <p>Handled exactly like a manual leave, minus the chat to the leaver:
+     * leader leaves -> leadership moves to the first ONLINE member (fallback:
+     * first remaining member); last member leaves -> the squad and its
+     * annotations are removed. Every remaining player gets a fresh sync, so
+     * clients rebuild their roster and marker mirrors at once.</p>
      */
     @SubscribeEvent
     public static void onPlayerLogout(PlayerEvent.PlayerLoggedOutEvent event) {
-        if (!(event.getEntity() instanceof ServerPlayer sp)) {
-            return;
+        if (event.getEntity() instanceof ServerPlayer sp) {
+            detachPlayer(sp.server, sp.getUUID(), sp.getGameProfile().getName());
         }
-        Squad s = squadOf(sp.getUUID());
+    }
+
+    /** Removes an (already gone or leaving) player from any squad they hold. */
+    public static void detachPlayer(MinecraftServer server, UUID id, String name) {
+        Squad s = squadOf(id);
         if (s == null) {
             return;
         }
-        UUID id = sp.getUUID();
-        String who = sp.getGameProfile().getName();
+        boolean wasLeader = s.leader.equals(id);
         s.removeMember(id);
         memberOf.remove(id);
-        boolean wasLeader = s.leader.equals(id);
         if (s.members.isEmpty()) {
             squads.remove(s.name.toLowerCase(java.util.Locale.ROOT));
             markers.remove(s.name.toLowerCase(java.util.Locale.ROOT));
+            XaeroTacMap.LOGGER.info("[TacMap] Squad '{}' disbanded (last member {} left).", s.name, name);
         } else {
             if (wasLeader) {
-                UUID next = s.members.keySet().iterator().next();
+                UUID next = firstOnlineMember(server, s);
                 s.leader = next;
-                ServerPlayer np = online(sp.server, next);
+                ServerPlayer np = online(server, next);
                 if (np != null) {
-                    chat(np, "队长 " + who + " 退出游戏，你成为「" + s.name + "」的新队长", ChatFormatting.GREEN);
+                    chat(np, "队长下线，你成为「" + s.name + "」的新队长", ChatFormatting.GREEN);
                 }
             }
-            for (UUID mid : s.members.keySet()) {
-                ServerPlayer mp = online(sp.server, mid);
-                if (mp != null) {
-                    chat(mp, who + " 退出服务器，已自动离开小队「" + s.name + "」", ChatFormatting.YELLOW);
-                }
+            broadcastMarkersToSquad(server, s);
+        }
+        broadcastSquadStateToAll(server);
+        XaeroTacMap.LOGGER.info("[TacMap] {} disconnected; removed from squad '{}'.", name, s.name);
+    }
+
+    /** First ONLINE member (leadership should not pass to another ghost). */
+    private static UUID firstOnlineMember(MinecraftServer server, Squad s) {
+        for (UUID id : s.members.keySet()) {
+            if (online(server, id) != null) {
+                return id;
             }
         }
-        broadcastSquadStateToAll(sp.server);
+        return s.members.keySet().iterator().next();
     }
 
     // ------------------------------------------------------------ helpers
@@ -386,18 +406,38 @@ public final class SquadManager {
     }
 
     /**
-     * OP command (v4.0.10): disband a whole squad by (fuzzy) name. Removes
-     * every member, drops the squad and its annotations, notifies the online
-     * members and refreshes everyone's roster (clients clear local markers
-     * automatically when their squad becomes null).
+     * v4.0.10 OP command: dissolve a squad entirely - members are detached
+     * (their client marker mirrors reset through the next state sync) and
+     * the squad's annotations die with it. Accepts the literal name, a unique
+     * prefix, or {@code all} to wipe every squad in the session.
+     *
+     * @return error text, or null on success (already chatted)
      */
     public static String disbandSquad(ServerPlayer op, String rawName) {
-        String key = rawName.trim().toLowerCase(java.util.Locale.ROOT);
+        String arg = rawName == null ? "" : rawName.trim().toLowerCase(java.util.Locale.ROOT);
+        if (arg.equals("all")) {
+            if (squads.isEmpty()) {
+                return "当前没有小队";
+            }
+            int n = squads.size();
+            for (Squad s : new ArrayList<>(squads.values())) {
+                dissolve(op.server, s);
+            }
+            broadcastSquadStateToAll(op.server);
+            chat(op, "已解散全部小队（" + n + "）", ChatFormatting.YELLOW);
+            XaeroTacMap.LOGGER.info("[TacMap] OP {} disbanded ALL squads ({}).",
+                    op.getGameProfile().getName(), n);
+            return null;
+        }
+        if (arg.isEmpty()) {
+            return "用法：/tacmap squad disband <小队名|all>";
+        }
+        String key = arg;
         Squad s = squads.get(key);
         if (s == null) {
-            // fuzzy: prefix match
+            // fuzzy: unique prefix match, same as the clear command
             for (Map.Entry<String, Squad> e : squads.entrySet()) {
-                if (e.getKey().startsWith(key)) {
+                if (e.getKey().startsWith(arg)) {
                     key = e.getKey();
                     s = e.getValue();
                     break;
@@ -407,21 +447,25 @@ public final class SquadManager {
         if (s == null) {
             return "找不到小队：" + rawName;
         }
-        List<TacAnnotation> list = markers.remove(key);
-        squads.remove(key);
-        int count = 0;
+        dissolve(op.server, s);
+        broadcastSquadStateToAll(op.server);
+        chat(op, "已解散小队「" + s.name + "」", ChatFormatting.YELLOW);
+        XaeroTacMap.LOGGER.info("[TacMap] OP {} disbanded squad '{}'.",
+                op.getGameProfile().getName(), s.name);
+        return null;
+    }
+
+    /** Removes the squad, detaches EVERY member and notifies the online ones. */
+    private static void dissolve(MinecraftServer server, Squad s) {
         for (UUID id : new ArrayList<>(s.members.keySet())) {
             memberOf.remove(id);
-            count++;
-            ServerPlayer p = online(op.server, id);
+            ServerPlayer p = online(server, id);
             if (p != null) {
-                chat(p, "OP 解散了小队「" + s.name + "」，你已不在小队中", ChatFormatting.YELLOW);
+                chat(p, "OP 已解散小队「" + s.name + "」", ChatFormatting.YELLOW);
             }
         }
-        broadcastSquadStateToAll(op.server);
-        chat(op, "已解散小队「" + s.name + "」（移除 " + count + " 人，清理标注 "
-                + (list == null ? 0 : list.size()) + " 条）", ChatFormatting.GREEN);
-        return null;
+        squads.remove(s.name.toLowerCase(java.util.Locale.ROOT));
+        markers.remove(s.name.toLowerCase(java.util.Locale.ROOT));
     }
 
     // ------------------------------------------------------------ data out
@@ -515,13 +559,7 @@ public final class SquadManager {
                         .then(net.minecraft.commands.Commands.literal("disband")
                                 .requires(src -> src.hasPermission(2))
                                 .then(net.minecraft.commands.Commands.argument("squad",
-                                        com.mojang.brigadier.arguments.StringArgumentType.greedyString())
-                                        .suggests((ctx, builder) -> {
-                                            for (Squad sq : squads.values()) {
-                                                builder.suggest(sq.name);
-                                            }
-                                            return builder.buildFuture();
-                                        })
+                                        com.mojang.brigadier.arguments.StringArgumentType.word())
                                         .executes(ctx -> {
                                             ServerPlayer op = ctx.getSource().getPlayerOrException();
                                             String name = com.mojang.brigadier.arguments.StringArgumentType

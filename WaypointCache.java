@@ -65,6 +65,9 @@ public final class WaypointCache {
         double pz = mc.player.getZ();
         List<WaypointEntry> collected = XaeroWaypointSource.collect(px, py, pz);
         status = XaeroWaypointSource.lastStatus;
+        // v4.0.13 ROLLBACK: the v4.0.12 squad-annotation merge was removed on
+        // request - this HUD collects Xaero waypoints ONLY again. Map-side
+        // annotation features (chips, readouts, enemy routes) are unaffected.
         collected.sort((a, b) -> Double.compare(a.distance, b.distance));
         snapshot = List.copyOf(collected);
         if (!loggedFirstData && !collected.isEmpty()) {

@@ -14,6 +14,16 @@ import net.minecraft.network.chat.Component;
  * the expandable symbol palette and the inline label input box. Hit testing
  * mirrors the drawn layout exactly; clicks on toolbar/palette are consumed by
  * the caller (canceled so Xaero never sees them).
+ *
+ * <p>v4.0.14: the toolbar wraps into balanced columns adaptively whenever a
+ * single column would not fit (see {@code maxPerCol()}).</p>
+ *
+ * <p>v4.0.15: export/import buttons REMOVED from the toolbar - they live in
+ * the squad panel (second-level menu) only, which already had them. The
+ * enemy-route tool moved right next to the route tool (visual slot 4), so
+ * the toolbar is back to a classic single 9-button column (189 px) that
+ * fits even at GUI scale 4. Visual order is decoupled from action ids via
+ * {@link #ORDER}; the ids themselves keep their historical values.</p>
  */
 public final class AnnotationToolbar {
 
@@ -26,14 +36,32 @@ public final class AnnotationToolbar {
     public static final int ACT_ERASE = 5;
     public static final int ACT_PALETTE = 6;
     public static final int ACT_SQUAD = 7;
-    public static final int ACT_EXPORT = 8;
-    public static final int ACT_IMPORT = 9;
+    /**
+     * v4.0.10 - APPENDED so every existing action id keeps its meaning.
+     * v4.0.15 - visually moved to slot 4 (next to the route tool); the id
+     * itself is unchanged, only {@link #ORDER} maps the new position.
+     */
+    public static final int ACT_ENEMY_ROUTE = 10;
+
+    /**
+     * v4.0.15 visual order (left-to-right = top-to-bottom in the single
+     * column): pointer, point, route, ENEMY ROUTE (slot 4, next to route),
+     * polygon, circle, eraser, palette, squad. Export/import are NOT
+     * toolbar buttons anymore - the squad panel owns them.
+     */
+    private static final int[] ORDER = {
+            ACT_NONE_TOOL, ACT_POINT, ACT_ROUTE, ACT_ENEMY_ROUTE,
+            ACT_POLYGON, ACT_CIRCLE, ACT_ERASE, ACT_PALETTE, ACT_SQUAD
+    };
 
     private static final int BTN = 18;
     private static final int GAP = 3;
     private static final int X = 8;
     private static final int Y0 = 64;
-    private static final int COUNT = 10;
+    /** Extra horizontal room between wrapped toolbar columns. */
+    private static final int COL_GAP = 8;
+    /** v4.0.15: 11 -> 9 buttons (export/import moved to the squad panel). */
+    private static final int COUNT = ORDER.length;
 
     private static final int PANEL_BG = 0xC60D1114;
     private static final int PANEL_BORDER = 0x662FA8B8;
@@ -51,13 +79,57 @@ public final class AnnotationToolbar {
     }
 
     // ------------------------------------------------------------ layout
+    //
+    // v4.0.14: adaptive column wrap - the layout wraps into balanced columns
+    // whenever one column would not fit (kept as a safety net for very
+    // small GUI heights).
+    // v4.0.15: back to the classic single column in practice - 9 buttons
+    // need 189 px, which fits even at GUI scale 4 (270 GUI px tall on
+    // 1080p). Order is COLUMN-MAJOR; palette/squad move to a second column
+    // only when wrapping kicks in on tiny heights.
+
+    private static int guiH() {
+        return Minecraft.getInstance().getWindow().getGuiScaledHeight();
+    }
+
+    /** Rows that fit in one column under the current GUI height (>= 1). */
+    private static int maxPerCol() {
+        int usable = guiH() - Y0 - 6;
+        return Math.max(1, (usable + GAP) / (BTN + GAP));
+    }
+
+    private static int cols() {
+        return (COUNT + maxPerCol() - 1) / maxPerCol();
+    }
+
+    /** Balanced rows per column (every column gets this count or one less). */
+    private static int perCol() {
+        return (COUNT + cols() - 1) / cols();
+    }
+
+    private static int colOf(int i) {
+        return i / perCol();
+    }
+
+    private static int rowOf(int i) {
+        return i % perCol();
+    }
+
+    private static int btnX(int i) {
+        return X + colOf(i) * (BTN + COL_GAP);
+    }
 
     private static int btnY(int i) {
-        return Y0 + i * (BTN + GAP);
+        return Y0 + rowOf(i) * (BTN + GAP);
+    }
+
+    /** Total drawn width of the toolbar (all columns). */
+    private static int toolbarW() {
+        return (cols() - 1) * (BTN + COL_GAP) + BTN;
     }
 
     private static int paletteX() {
-        return X + BTN + 6;
+        return X + toolbarW() + 6;
     }
 
     private static int paletteW() {
@@ -97,19 +169,20 @@ public final class AnnotationToolbar {
     }
 
     public static int totalHeight() {
-        return COUNT * (BTN + GAP);
+        return perCol() * (BTN + GAP);
     }
 
     // ------------------------------------------------------------ hit testing
 
     /** Toolbar button index under the cursor, or -1. */
     public static int hit(double mx, double my) {
-        if (mx < X || mx > X + BTN || my < Y0 - GAP) {
+        if (my < Y0 - GAP) {
             return -1;
         }
         for (int i = 0; i < COUNT; i++) {
+            int x = btnX(i);
             int y = btnY(i);
-            if (my >= y && my <= y + BTN) {
+            if (mx >= x - 2 && mx <= x + BTN + 2 && my >= y && my <= y + BTN) {
                 return i;
             }
         }
@@ -158,9 +231,13 @@ public final class AnnotationToolbar {
         return null;
     }
 
-    /** Maps a toolbar button index to its action id. */
+    /**
+     * Maps a toolbar button index (visual position, as returned by
+     * {@link #hit}) to its action id. Since v4.0.15 the visual order differs
+     * from the id order, so callers MUST go through this mapping.
+     */
     public static int actionOf(int index) {
-        return index; // layout order == action ids
+        return ORDER[index];
     }
 
     // ------------------------------------------------------------ drawing
@@ -192,29 +269,33 @@ public final class AnnotationToolbar {
         gg.drawString(font, squadLabel, X + 11, Y0 - 13, TEXT, true);
 
         for (int i = 0; i < COUNT; i++) {
+            int x = btnX(i);
             int y = btnY(i);
             boolean hover = hit(mouseX, mouseY) == i;
             boolean selected = false;
             Tool t = DrawingController.tool();
-            switch (i) {
+            // v4.0.15: switch on the ACTION id, not the visual index -
+            // the enemy route button sits at slot 3 but keeps id 10
+            switch (actionOf(i)) {
                 case ACT_NONE_TOOL -> selected = t == Tool.NONE;
                 case ACT_POINT -> selected = t == Tool.POINT;
                 case ACT_ROUTE -> selected = t == Tool.ROUTE;
                 case ACT_POLYGON -> selected = t == Tool.POLYGON;
                 case ACT_CIRCLE -> selected = t == Tool.CIRCLE;
                 case ACT_ERASE -> selected = t == Tool.ERASE;
+                case ACT_ENEMY_ROUTE -> selected = t == Tool.ENEMY_ROUTE;
                 case ACT_PALETTE -> selected = DrawingController.paletteOpen();
                 default -> selected = false;
             }
             int border = selected ? SEL : (hover ? 0xFF5FC3D3 : PANEL_BORDER);
-            gg.fill(X - 2, y - 2, X + BTN + 2, y + BTN + 2, PANEL_BG);
-            gg.fill(X - 2, y - 2, X + BTN + 2, y - 1, border);
-            gg.fill(X - 2, y + BTN + 1, X + BTN + 2, y + BTN + 2, border);
-            gg.fill(X - 2, y - 2, X - 1, y + BTN + 2, border);
-            gg.fill(X + BTN + 1, y - 2, X + BTN + 2, y + BTN + 2, border);
-            drawButtonIcon(gg, font, i, X, y, ICON);
+            gg.fill(x - 2, y - 2, x + BTN + 2, y + BTN + 2, PANEL_BG);
+            gg.fill(x - 2, y - 2, x + BTN + 2, y - 1, border);
+            gg.fill(x - 2, y + BTN + 1, x + BTN + 2, y + BTN + 2, border);
+            gg.fill(x - 2, y - 2, x - 1, y + BTN + 2, border);
+            gg.fill(x + BTN + 1, y - 2, x + BTN + 2, y + BTN + 2, border);
+            drawButtonIcon(gg, font, actionOf(i), x, y, ICON);
             if (hover) {
-                drawToolbarTooltip(gg, font, mouseX, mouseY, i);
+                drawToolbarTooltip(gg, font, mouseX, mouseY, actionOf(i));
             }
         }
 
@@ -226,7 +307,7 @@ public final class AnnotationToolbar {
         if (DrawingController.tool() != Tool.NONE && !ClientMarkerStore.inSquad()) {
             String warn = Component.translatable("xaerotacmap.annotate.need_squad").getString();
             int w = font.width(warn);
-            int hx = X + BTN + 8;
+            int hx = X + toolbarW() + 8;
             int hy = btnY(0) + 2;
             gg.fill(hx - 3, hy - 2, hx + w + 3, hy + 10, PANEL_BG);
             gg.drawString(font, warn, hx, hy, WARN, true);
@@ -296,7 +377,8 @@ public final class AnnotationToolbar {
         }
     }
 
-    /** Chinese name tooltip for a hovered toolbar button (v4.0.5 i18n pass). */
+    /** Chinese name tooltip for a hovered toolbar button (v4.0.5 i18n pass).
+     * v4.0.15: {@code btn} is the ACTION id (already mapped through actionOf). */
     private static void drawToolbarTooltip(GuiGraphics gg, Font font,
                                            double mouseX, double mouseY, int btn) {
         String key = switch (btn) {
@@ -308,8 +390,7 @@ public final class AnnotationToolbar {
             case ACT_ERASE -> "xaerotacmap.act.erase";
             case ACT_PALETTE -> "xaerotacmap.act.palette";
             case ACT_SQUAD -> "xaerotacmap.act.squad";
-            case ACT_EXPORT -> "xaerotacmap.act.export";
-            case ACT_IMPORT -> "xaerotacmap.act.import";
+            case ACT_ENEMY_ROUTE -> "xaerotacmap.act.enemy_route";
             default -> null;
         };
         if (key == null) {
@@ -354,13 +435,14 @@ public final class AnnotationToolbar {
 
     // ------------------------------------------------------------ icons
 
-    private static void drawButtonIcon(GuiGraphics gg, Font font, int i, int x, int y, int color) {
+    /** Draws one button icon; {@code action} is the ACTION id (v4.0.15 mapping). */
+    private static void drawButtonIcon(GuiGraphics gg, Font font, int action, int x, int y, int color) {
         int abgr = ShapeDraw.abgr(color);
         double cx = x + BTN / 2.0D;
         double cy = y + BTN / 2.0D;
         BufferBuilder bb = ShapeDraw.open();
         PoseStack.Pose pose = gg.pose().last();
-        switch (i) {
+        switch (action) {
             case ACT_NONE_TOOL -> {
                 // pointer arrow
                 double[] xs = {cx - 4, cx - 4, cx + 4.5};
@@ -406,15 +488,15 @@ public final class AnnotationToolbar {
                 ShapeDraw.seg(bb, pose, cx - 5.5, cy + 5.5, cx - 0.5, cy + 5.5, 0.9D, abgr);
                 ShapeDraw.seg(bb, pose, cx + 0.5, cy + 5.5, cx + 5.5, cy + 5.5, 0.9D, abgr);
             }
-            case ACT_EXPORT -> {
-                ShapeDraw.seg(bb, pose, cx, cy + 5, cx, cy - 4, 1.0D, abgr);
-                ShapeDraw.arrow(bb, pose, cx, cy - 5.5, 0, -1, 3.6D, 2.6D, abgr);
-                ShapeDraw.seg(bb, pose, cx - 4.5, cy + 5.5, cx + 4.5, cy + 5.5, 0.9D, abgr);
-            }
-            case ACT_IMPORT -> {
-                ShapeDraw.seg(bb, pose, cx, cy - 5, cx, cy + 4, 1.0D, abgr);
-                ShapeDraw.arrow(bb, pose, cx, cy + 5.5, 0, 1, 3.6D, 2.6D, abgr);
-                ShapeDraw.seg(bb, pose, cx - 4.5, cy + 5.5, cx + 4.5, cy + 5.5, 0.9D, abgr);
+            case ACT_ENEMY_ROUTE -> {
+                // v4.0.10: hostile zigzag with TWO arrowheads - always drawn
+                // in enemy red regardless of the toolbar icon tint
+                int red = ShapeDraw.abgr(0xFFFF5252);
+                double[] exs = {cx - 6, cx - 1.5, cx + 2, cx + 6};
+                double[] eys = {cy + 4.5, cy - 1, cy + 2.5, cy - 4.5};
+                ShapeDraw.strokeDashed(bb, pose, exs, eys, 0.8D, false, 2.5D, 1.8D, red);
+                ShapeDraw.arrow(bb, pose, cx + 6, cy - 4.5, 0.55D, -0.83D, 4.2D, 2.6D, red);
+                ShapeDraw.arrow(bb, pose, cx - 0.2, cy + 1.8, 0.55D, -0.83D, 3.4D, 2.0D, red);
             }
             default -> ShapeDraw.fillCircle(bb, pose, cx, cy, 3.0D, abgr, 10);
         }

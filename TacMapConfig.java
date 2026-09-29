@@ -85,6 +85,13 @@ public final class TacMapConfig {
                 .define("includeTemporaryWaypoints", false);
         INCLUDE_DEATHPOINTS = b.comment("Include death waypoints.")
                 .define("includeDeathpoints", false);
+        // v4.0.13 ROLLBACK: the v4.0.12 annotations-in-HUD toggle (squad
+        // annotations merged into the K-key HUD) was removed entirely on
+        // request - the HUD collects Xaero waypoints ONLY again. Removal
+        // (not a default flip): a 4.0.12-written TOML would keep the stale
+        // true value and silently override any new default, the exact trap
+        // fixed for the chip readout key in 4.0.11. Map-side annotation
+        // features are NOT affected.
         b.pop();
 
         b.push("map");
@@ -94,9 +101,18 @@ public final class TacMapConfig {
                 .define("tacticalLine", true);
         MAP_LINE_MID_LABEL = b.comment("Show distance/bearing label at the middle of the tactical line.")
                 .define("lineMidLabel", true);
+        // v4.0.10: default flipped back to TRUE on request - the dual bearing
+        // readout (yaw + compass + distance) is restored under every name chip.
+        // The toggle stays so the quieter v4.0.9 name-only style is one click away.
+        // v4.0.11: config key renamed chipReadout -> showChipReadout. A plain
+        // default flip was NOT enough for upgraders: their 4.0.9-written TOML
+        // still carries "chipReadout = false", which silently overrides the new
+        // default and keeps the readouts hidden. The fresh key ignores the stale
+        // one, so every upgrader sees the restored readout without manual edits.
         MAP_CHIP_READOUT = b.comment("Show the dual bearing readout (yaw + compass + distance) under annotation name chips on the world map. "
-                        + "OFF (default) = chips show the marker name only; ON = v4.0.7 style second line with live readouts.")
-                .define("chipReadout", false);
+                        + "ON (default, restored in v4.0.10) = v4.0.7 style second line with live readouts; "
+                        + "OFF = v4.0.9 style name-only chips.")
+                .define("showChipReadout", true);
         MAP_DEBUG_BAR = b.comment("Show the live diagnostic bar on the world map (build tag, live camera values, hover calibration check). "
                         + "OFF by default for clean screenshots. Turn it ON (config screen or this TOML) while reporting issues - "
                         + "it proves whether the overlay reads live map state.")

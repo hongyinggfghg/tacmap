@@ -73,8 +73,6 @@
   "xaerotacmap.act.erase": "Eraser (delete annotation)",
   "xaerotacmap.act.palette": "Symbol palette",
   "xaerotacmap.act.squad": "Squad panel (J)",
-  "xaerotacmap.act.export": "Export annotations",
-  "xaerotacmap.act.import": "Import annotations",
   "xaerotacmap.tool.none": "Pointer (cancel drawing)",
   "xaerotacmap.tool.point": "Point marker",
   "xaerotacmap.tool.route": "Route arrow",
@@ -150,5 +148,9 @@
   "xaerotacmap.import.done": "Sent %s annotations (imported into your squad)",
   "xaerotacmap.import.failed": "Import failed: %s",
   "xaerotacmap.import.dir_hint": "Click a file to import; source: config/tacmap_exports/",
-  "xaerotacmap.cmd.export_all_denied": "Only OP can export all squads"
+  "xaerotacmap.cmd.export_all_denied": "Only OP can export all squads",
+  "xaerotacmap.act.enemy_route": "Enemy route arrows",
+  "xaerotacmap.annotate.default_enemy_route": "Enemy route",
+  "xaerotacmap.annotate.hint_enemy_route": "Left-click waypoints along the enemy axis, right-click/Enter to finish, Backspace to undo",
+  "xaerotacmap.symbol.enemy_route": "Enemy route"
 }

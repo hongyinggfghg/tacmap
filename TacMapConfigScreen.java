@@ -120,7 +120,8 @@ public final class TacMapConfigScreen extends Screen {
         addWidget(boolCycle(col2X, r, TacMapConfig.INCLUDE_DEATHPOINTS, "xaerotacmap.config.include_death"));
 
         // ---------------- bottom row: map screen features ----------------
-        // v4.0.9: 4 -> 5 toggles (chip readout); narrower buttons to stay centered
+        // v4.0.13 ROLLBACK: back to the 5 v4.0.9-era toggles (the v4.0.12
+        // "annotations in HUD" 6th button was removed with the feature).
         int mapY = yAt(ROWS) + 8;
         int btnW = 88;
         int x0 = this.width / 2 - (btnW * 5 + 16) / 2;

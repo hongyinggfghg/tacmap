@@ -73,8 +73,6 @@
   "xaerotacmap.act.erase": "橡皮擦（删除标注）",
   "xaerotacmap.act.palette": "符号面板",
   "xaerotacmap.act.squad": "小队面板（J）",
-  "xaerotacmap.act.export": "导出标注",
-  "xaerotacmap.act.import": "导入标注",
   "xaerotacmap.tool.none": "指针（取消绘制）",
   "xaerotacmap.tool.point": "点标记",
   "xaerotacmap.tool.route": "路线箭头",
@@ -150,5 +148,9 @@
   "xaerotacmap.import.done": "已发送 %s 条标注（导入为本队新标注）",
   "xaerotacmap.import.failed": "导入失败：%s",
   "xaerotacmap.import.dir_hint": "点击文件导入；来源：config/tacmap_exports/",
-  "xaerotacmap.cmd.export_all_denied": "只有 OP 可以导出全部队伍"
+  "xaerotacmap.cmd.export_all_denied": "只有 OP 可以导出全部队伍",
+  "xaerotacmap.act.enemy_route": "敌军路线箭头",
+  "xaerotacmap.annotate.default_enemy_route": "敌路",
+  "xaerotacmap.annotate.hint_enemy_route": "左键沿敌方进军方向加点，右键/Enter 结束，Backspace 撤销",
+  "xaerotacmap.symbol.enemy_route": "敌军路线"
 }

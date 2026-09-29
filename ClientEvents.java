@@ -109,10 +109,10 @@ public final class ClientEvents {
         double mx = event.getMouseX();
         double my = event.getMouseY();
 
-        // 1) toolbar buttons
+        // 1) toolbar buttons (v4.0.15: visual slot -> action id mapping)
         int btn = AnnotationToolbar.hit(mx, my);
         if (btn >= 0) {
-            applyToolbarAction(btn);
+            applyToolbarAction(AnnotationToolbar.actionOf(btn));
             event.setCanceled(true);
             return;
         }
@@ -196,21 +196,14 @@ public final class ClientEvents {
             case AnnotationToolbar.ACT_NONE_TOOL -> DrawingController.setTool(Tool.NONE);
             case AnnotationToolbar.ACT_POINT -> DrawingController.setTool(Tool.POINT);
             case AnnotationToolbar.ACT_ROUTE -> DrawingController.setTool(Tool.ROUTE);
+            case AnnotationToolbar.ACT_ENEMY_ROUTE -> DrawingController.setTool(Tool.ENEMY_ROUTE);
             case AnnotationToolbar.ACT_POLYGON -> DrawingController.setTool(Tool.POLYGON);
             case AnnotationToolbar.ACT_CIRCLE -> DrawingController.setTool(Tool.CIRCLE);
             case AnnotationToolbar.ACT_ERASE -> DrawingController.setTool(Tool.ERASE);
             case AnnotationToolbar.ACT_PALETTE -> DrawingController.togglePalette();
             case AnnotationToolbar.ACT_SQUAD -> Minecraft.getInstance().setScreen(new SquadScreen());
-            case AnnotationToolbar.ACT_EXPORT -> {
-                if (ClientMarkerStore.inSquad()) {
-                    Minecraft.getInstance().setScreen(new dev.tacmap.xaerotacmap.client.gui.ExportScreen());
-                }
-            }
-            case AnnotationToolbar.ACT_IMPORT -> {
-                if (ClientMarkerStore.inSquad()) {
-                    Minecraft.getInstance().setScreen(new dev.tacmap.xaerotacmap.client.gui.ImportScreen());
-                }
-            }
+            // v4.0.15: export/import removed from the toolbar - the squad
+            // panel (J) already hosts them as the second-level menu
             default -> {
             }
         }

@@ -112,16 +112,28 @@ public final class ClientMarkerStore {
         return roster;
     }
 
-    /** The ARGB color used to render an annotation (enemy-pack marks forced red). */
+    /**
+     * The ARGB color used to render an annotation on the map.
+     *
+     * <p>v4.0.10: strict two-tone scheme - hostile symbols (the whole enemy
+     * pack + the enemy route) are always {@link Squad#ENEMY_RED}; everything
+     * else is always {@link Squad#FRIENDLY_BLUE}. The per-squad palette color
+     * no longer tints map markers (it still colors the squad browser rows).</p>
+     */
     public static int renderColor(TacAnnotation a) {
         if (AnnotationSymbolsRenderer.isHostile(a.symbol)) {
             return Squad.ENEMY_RED;
         }
-        return mine == null ? 0xFFFFFFFF : mine.color;
+        return Squad.FRIENDLY_BLUE;
     }
 
+    /**
+     * v4.0.10: the color for previews, the toolbar squad chip and the
+     * friendly palette grid - unified to the shared friendly blue so what you
+     * draw matches what everyone sees on the map.
+     */
     public static int squadColor() {
-        return mine == null ? 0xFF9FB4B8 : mine.color;
+        return Squad.FRIENDLY_BLUE;
     }
 
     public static List<TacAnnotation> markersIn(String dimension) {
