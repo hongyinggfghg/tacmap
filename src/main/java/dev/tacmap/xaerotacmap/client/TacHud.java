@@ -16,9 +16,13 @@ import java.util.List;
  * The in-game tactical HUD: the nearest waypoints sorted by distance,
  * refreshed at a fixed cadence (default 10 Hz).
  *
- * <p>Row layout: [color dot] name ... 1234.5m  45.3° NE  Y-135.4°
+ * <p>Row layout: [color dot] name ... 1234.5m  盘45.3° NE  朝Y-135.4°  +12.0m
  * (v4.0.7: the compass bearing and the Minecraft yaw bearing are shown
- * side by side - the yaw value is what players dial in from the F3 readout.)</p>
+ * side by side - the yaw value is what players dial in from the F3 readout.)
+ * (v4.0.15: full parity with the hover tactical line data - the compass
+ * bearing carries the same "盘/C" tag as the dashed line's mid label, and
+ * Y-including waypoints additionally show the elevation difference like the
+ * hover panel's 高度差 row, green when above the player, red when below.)</p>
  *
  * <p>v4.0.13 ROLLBACK: the v4.0.12 squad-annotation merge was removed on
  * request - this list contains Xaero waypoints ONLY again. Y-less (2D)
@@ -35,6 +39,10 @@ public final class TacHud implements IGuiOverlay {
     private static final int TEXT_DIM = 0xFF9FB4B8;
     /** Amber used for the yaw (F3 facing) readout so it stands apart from the compass bearing. */
     private static final int YAW = 0xFFE0B050;
+    /** Elevation-above-player green (same palette as the hover panel's 高度差 row). */
+    private static final int DY_UP = 0xFF9BE29B;
+    /** Elevation-below-player red. */
+    private static final int DY_DOWN = 0xFFE29B9B;
     private static final int ROW_HEIGHT = 11;
 
     private TacHud() {
@@ -96,14 +104,24 @@ public final class TacHud implements IGuiOverlay {
         String[] dists = new String[count];
         String[] brgs = new String[count];
         String[] yaws = new String[count];
+        String[] dys = new String[count];
         String yawTag = Component.translatable("xaerotacmap.brg.yaw_s").getString();
+        // v4.0.15: same compass tag as the hover tactical line's mid label
+        String cmpTag = Component.translatable("xaerotacmap.brg.cmp_s").getString();
         for (int i = 0; i < count; i++) {
             WaypointEntry e = all.get(i);
             dists[i] = BearingMath.fmt(e.distance, decimals) + "m";
-            brgs[i] = BearingMath.fmt(e.bearing, decimals) + "\u00B0 "
+            brgs[i] = cmpTag + BearingMath.fmt(e.bearing, decimals) + "\u00B0 "
                     + Component.translatable(BearingMath.dirKey(e.bearing)).getString();
             yaws[i] = yawTag + BearingMath.fmt(e.yaw, decimals) + "\u00B0";
-            rightW = Math.max(rightW, font.width(dists[i] + "  " + brgs[i] + "  " + yaws[i]));
+            // v4.0.15: elevation difference (hover panel's 高度差 row) - only
+            // for waypoints that actually carry a Y
+            dys[i] = e.yIncluded
+                    ? (e.yDiff >= 0 ? "+" : "") + BearingMath.fmt(e.yDiff, decimals) + "m"
+                    : null;
+            String chain = dists[i] + "  " + brgs[i] + "  " + yaws[i]
+                    + (dys[i] != null ? "  " + dys[i] : "");
+            rightW = Math.max(rightW, font.width(chain));
         }
         int nameW = 0;
         for (int i = 0; i < count; i++) {
@@ -163,8 +181,17 @@ public final class TacHud implements IGuiOverlay {
             x += nameW + 8;
 
             gg.drawString(font, dists[i], x, y, TEXT, true);
-            // v4.0.7: compass bearing and yaw side by side, both right-aligned
-            int yawX = x + rightW - font.width(yaws[i]);
+            // v4.0.15 right-aligned chain (row order matches the hover panel:
+            // distance ... bearing ... yaw ... elevation): elevation sits at
+            // the right edge when present, yaw/brg stack in front of it
+            int dyX = x + rightW - font.width(dys[i] != null ? dys[i] : yaws[i]);
+            if (dys[i] != null) {
+                gg.drawString(font, dys[i], dyX, y, e.yDiff >= 0 ? DY_UP : DY_DOWN, true);
+                dyX -= 6 + font.width(yaws[i]);
+            }
+            // with dy: dyX was advanced back to the yaw anchor; without it the
+            // yaw is simply the rightmost segment
+            int yawX = dyX;
             int brgX = yawX - 6 - font.width(brgs[i]);
             gg.drawString(font, brgs[i], brgX, y, TEXT_DIM, true);
             gg.drawString(font, yaws[i], yawX, y, YAW, true);

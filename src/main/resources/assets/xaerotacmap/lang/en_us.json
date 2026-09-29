@@ -73,8 +73,6 @@
   "xaerotacmap.act.erase": "Eraser (delete annotation)",
   "xaerotacmap.act.palette": "Symbol palette",
   "xaerotacmap.act.squad": "Squad panel (J)",
-  "xaerotacmap.act.export": "Export annotations",
-  "xaerotacmap.act.import": "Import annotations",
   "xaerotacmap.tool.none": "Pointer (cancel drawing)",
   "xaerotacmap.tool.point": "Point marker",
   "xaerotacmap.tool.route": "Route arrow",
